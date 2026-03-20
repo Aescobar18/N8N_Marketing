@@ -43,6 +43,18 @@ app.post('/scrape', async (req, res) => {
   }
 });
 
+// ─── FUNCIÓN PARA INPUT DINÁMICO ───────────────────────────────────────────────
+async function fillInput(page, selectors, value) {
+  for (const sel of selectors) {
+    try {
+      await page.waitForSelector(sel, { timeout: 5000 });
+      await page.fill(sel, value);
+      return;
+    } catch (e) {}
+  }
+  throw new Error(`No encontró input: ${selectors[0]}`);
+}
+
 // ─── SCRAPING ──────────────────────────────────────────────────────────────────
 async function scrapeGHL({ email, password }) {
   const browser = await chromium.launch({
@@ -67,13 +79,29 @@ async function scrapeGHL({ email, password }) {
 
   try {
     // LOGIN
-    await page.goto('https://app.gohighlevel.com/login', { waitUntil: 'networkidle' });
-
-    await page.fill('input[type="email"]', email);
-    await page.fill('input[type="password"]', password);
-    await page.click('button[type="submit"]');
+    await page.goto('https://app.gohighlevel.com/login', {
+      waitUntil: 'domcontentloaded'
+    });
 
     await page.waitForTimeout(3000);
+
+    // INPUTS DINÁMICOS (FIX)
+    await fillInput(page, [
+      'input[type="email"]',
+      'input[name="email"]',
+      '#email'
+    ], email);
+
+    await fillInput(page, [
+      'input[type="password"]',
+      'input[name="password"]',
+      '#password'
+    ], password);
+
+    // BOTÓN LOGIN
+    await page.click('button[type="submit"]');
+
+    await page.waitForTimeout(4000);
 
     if (page.url().includes('login')) {
       throw new Error('Login fallido');
@@ -84,14 +112,12 @@ async function scrapeGHL({ email, password }) {
       waitUntil: 'networkidle',
     });
 
-    await page.waitForTimeout(3000);
+    await page.waitForTimeout(4000);
 
-    // EXTRAER (simplificado para probar primero)
+    // EXTRAER DATOS
     const data = await page.evaluate(() => {
-      const values = Array.from(document.querySelectorAll('h2, h3, h4'))
+      return Array.from(document.querySelectorAll('h2, h3, h4'))
         .map(el => el.innerText);
-
-      return values;
     });
 
     result.success = true;
