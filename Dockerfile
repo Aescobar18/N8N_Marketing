@@ -1,5 +1,5 @@
 # Imagen oficial con Playwright + Chromium + dependencias
-FROM mcr.microsoft.com/playwright:v1.42.0-jammy
+FROM mcr.microsoft.com/playwright:v1.58.0-jammy
 
 WORKDIR /app
 
