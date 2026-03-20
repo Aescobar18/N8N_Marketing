@@ -1,20 +1,22 @@
-# Imagen base con Playwright y Chromium ya incluidos
-# Esta imagen oficial ya trae todas las dependencias del sistema
+# Imagen oficial con Playwright + Chromium + dependencias
 FROM mcr.microsoft.com/playwright:v1.42.0-jammy
 
 WORKDIR /app
 
-# Copiar dependencias primero (cache de Docker)
+# Copiar package.json y lock (mejor cache)
 COPY package*.json ./
+
+# Instalar dependencias
 RUN npm install --omit=dev
 
-# Copiar código fuente
-COPY server.js ./
+# Copiar TODO el proyecto (por si luego agregas más archivos)
+COPY . .
 
-# Render.com asigna el puerto via variable de entorno PORT
+# Puerto que usará Render
 EXPOSE 3000
 
-# Variable para que Playwright encuentre el Chromium de la imagen
-ENV PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/ms-playwright/chromium-1097/chrome-linux/chrome
+# ⚠️ NO es necesario setear executable path manualmente
+# Playwright ya sabe dónde está Chromium en esta imagen
 
+# Iniciar app
 CMD ["node", "server.js"]
