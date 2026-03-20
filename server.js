@@ -7,7 +7,7 @@ app.use(express.json());
 const PORT = process.env.PORT || 3000;
 const API_KEY = process.env.API_KEY || 'changeme-usa-una-clave-segura';
 
-// ─── MIDDLEWARE DE AUTENTICACIÓN ───────────────────────────────────────────────
+// ─── AUTH ──────────────────────────────────────────────────────────────────────
 app.use((req, res, next) => {
   if (req.path === '/health') return next();
   const key = req.headers['x-api-key'];
@@ -17,12 +17,12 @@ app.use((req, res, next) => {
   next();
 });
 
-// ─── HEALTH CHECK ─────────────────────────────────────────────────────────────
+// ─── HEALTH ────────────────────────────────────────────────────────────────────
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// ─── ENDPOINT PRINCIPAL ────────────────────────────────────────────────────────
+// ─── ENDPOINT ──────────────────────────────────────────────────────────────────
 app.post('/scrape', async (req, res) => {
   const email    = req.body.email    || process.env.GHL_EMAIL;
   const password = req.body.password || process.env.GHL_PASSWORD;
@@ -43,7 +43,7 @@ app.post('/scrape', async (req, res) => {
   }
 });
 
-// ─── FUNCIÓN PARA INPUT DINÁMICO ───────────────────────────────────────────────
+// ─── UTIL INPUT DINÁMICO ───────────────────────────────────────────────────────
 async function fillInput(page, selectors, value) {
   for (const sel of selectors) {
     try {
@@ -64,6 +64,7 @@ async function scrapeGHL({ email, password }) {
       '--disable-setuid-sandbox',
       '--disable-dev-shm-usage',
       '--disable-gpu',
+      '--disable-blink-features=AutomationControlled',
       '--single-process',
     ],
   });
@@ -79,13 +80,13 @@ async function scrapeGHL({ email, password }) {
 
   try {
     // LOGIN
-    await page.goto('https://app.gohighlevel.com/login', {
-      waitUntil: 'domcontentloaded'
+    await page.goto('https://app.solucionesseguras.org/', {
+      waitUntil: 'networkidle',
     });
 
-    await page.waitForTimeout(3000);
+    await page.waitForTimeout(5000);
 
-    // INPUTS DINÁMICOS (FIX)
+    // INPUTS
     await fillInput(page, [
       'input[type="email"]',
       'input[name="email"]',
@@ -98,23 +99,24 @@ async function scrapeGHL({ email, password }) {
       '#password'
     ], password);
 
-    // BOTÓN LOGIN
+    // LOGIN CLICK
     await page.click('button[type="submit"]');
 
-    await page.waitForTimeout(4000);
+    await page.waitForTimeout(6000);
 
     if (page.url().includes('login')) {
       throw new Error('Login fallido');
     }
 
-    // IR A STATS
-    await page.goto('https://app.gohighlevel.com/social-planner/statistics', {
-      waitUntil: 'networkidle',
-    });
+    // 🔥 URL REAL DE STATS
+    await page.goto(
+      'https://app.solucionesseguras.org/v2/location/NjBMY7rtgaZ7BpJORRqw/marketing/social-planner/statistics',
+      { waitUntil: 'networkidle' }
+    );
 
-    await page.waitForTimeout(4000);
+    await page.waitForTimeout(6000);
 
-    // EXTRAER DATOS
+    // EXTRAER (temporal)
     const data = await page.evaluate(() => {
       return Array.from(document.querySelectorAll('h2, h3, h4'))
         .map(el => el.innerText);
